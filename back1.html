@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local-Mart Prototype</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Use Inter font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Custom Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'brand-primary': {
+                            DEFAULT: '#4338CA', // indigo-700
+                            light: '#6366F1',   // indigo-500
+                            dark: '#312E81'    // indigo-900
+                        },
+                        'brand-secondary': '#10B981', // green-500
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        /* Base styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Center the phone frame on the desktop */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #e5e7eb; /* gray-200 */
+        }
+
+        /* The phone frame */
+        .phone-frame {
+            width: 100%;
+            max-width: 410px; /* iPhone 12 Pro Max width */
+            height: 95vh;
+            min-height: 700px;
+            max-height: 850px;
+            background-color: #111827; /* gray-900 */
+            border: 12px solid #111827;
+            border-radius: 40px; /* Rounded corners */
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* The "notch" at the top of the phone */
+        .phone-frame::before {
+            content: '';
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 150px;
+            height: 25px;
+            background-color: #111827;
+            border-bottom-left-radius: 15px;
+            border-bottom-right-radius: 15px;
+            z-index: 10;
+        }
+
+        /* The actual app screen */
+        .app-screen {
+            width: 100%;
+            height: 100%;
+            background-color: #f9fafb; /* gray-50 */
+            border-radius: 28px; /* Inner rounded corners */
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header for the app */
+        .app-header {
+            flex-shrink: 0;
+            background-color: #ffffff;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        /* Main content area, this will scroll */
+        .app-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            /* Smooth scrolling */
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        /* Hide scrollbar */
+        .app-content::-webkit-scrollbar,
+        .horizontal-scroll::-webkit-scrollbar {
+            display: none;
+        }
+        .app-content,
+        .horizontal-scroll {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+
+        /* Bottom navigation bar */
+        .app-nav {
+            flex-shrink: 0;
+            background-color: #ffffff;
+            border-top: 1px solid #e5e7eb;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+        }
+
+        /* Individual views that we show/hide */
+        .view {
+            display: none; /* Hidden by default */
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        .view.active {
+            display: block; /* Shown when active */
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: -100px; /* Start off-screen */
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #4338CA; /* brand-primary */
+            color: #ffffff;
+            padding: 12px 20px;
+            border-radius: 9999px; /* pill shape */
+            font-size: 0.875rem;
+            font-weight: 500;
+            z-index: 99;
+            transition: bottom 0.5s ease-in-out;
+        }
+        .toast.show {
+            bottom: 100px; /* Slide in */
+        }
+        .toast.success {
+            background-color: #10B981; /* brand-secondary */
+        }
+
+        /* Horizontal scroll container */
+        .horizontal-scroll {
+            display: flex;
+            overflow-x: auto;
+            white-space: nowrap;
+            padding-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- The Phone Frame -->
+    <div class="phone-frame">
+        <!-- The App Screen -->
+        <div class="app-screen">
+            
+            <!-- App Header (Sticky) -->
+            <header class="app-header p-4 shadow-sm">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-2">
+                        <!-- Location Icon -->
+                        <svg class="text-brand-primary" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                        <div>
+                            <h2 class="text-xs font-medium text-gray-500 uppercase">Delivering To</h2>
+                            <span class="font-bold text-gray-800">Lucknow, IN</span>
+                        </div>
+                    </div>
+                    <div>
+                        <!-- User Profile Icon -->
+                        <div id="header-profile-icon" class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center cursor-pointer">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        </div>
+                    </div>
+                </div>
+                <!-- Search Bar -->
+                <div class="mt-4">
+                    <input type="text" placeholder="Search for stores or items..." class="w-full px-4 py-2.5 bg-gray-100 rounded-lg text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary">
+                </div>
+            </header>
+
+            <!-- App Content (Scrollable) -->
+            <main class="app-content">
+
+                <!-- === HOME VIEW === -->
+                <div id="home-view" class="view active">
+                    <!-- Greeting -->
+                    <div class="p-4">
+                        <h1 id="greeting-text" class="text-2xl font-bold text-gray-900">Good Morning, User!</h1>
+                    </div>
+                    
+                    <!-- Offer Banners -->
+                    <div id="offer-banner-container" class="horizontal-scroll px-4 space-x-4">
+                        <!-- Offer banners injected by JS -->
+                    </div>
+                    
+                    <!-- Categories -->
+                    <div class="p-4 mt-2">
+                        <h2 class="text-xl font-bold text-gray-800 mb-4">Shop by Category</h2>
+                        <div id="category-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-4">
+                            <!-- Categories will be injected here by JS -->
+                        </div>
+                    </div>
+                    
+                    <!-- Previous Orders -->
+                    <div class="p-4 mt-2 bg-white">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-bold text-gray-800">Your Previous Orders</h2>
+                            <button class="text-sm font-semibold text-brand-primary">View All</button>
+                        </div>
+                        <div id="previous-orders-container" class="horizontal-scroll space-x-4">
+                            <!-- Previous orders injected by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- === STORE LIST VIEW === -->
+                <div id="store-list-view" class="view">
+                    <!-- Header with Back Button -->
+                    <div class="p-4 flex items-center space-x-2 border-b bg-white sticky top-0 z-10">
+                        <button id="back-to-home" class="p-1 text-gray-600">
+                            <!-- Back Icon -->
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                        </button>
+                        <h1 id="store-list-title" class="text-xl font-bold text-gray-900">Stores</h1>
+                    </div>
+                    <!-- Store cards will be injected here -->
+                    <div id="store-list-container" class="p-4 flex flex-col space-y-4">
+                        <!-- Store cards injected by JS -->
+                    </div>
+                </div>
+
+                <!-- === STORE DETAIL VIEW === -->
+                <div id="store-detail-view" class="view">
+                    <!-- Header with Back Button -->
+                    <div class="p-4 flex items-center space-x-2 border-b bg-white sticky top-0 z-10">
+                        <button id="back-to-stores" class="p-1 text-gray-600">
+                            <!-- Back Icon -->
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                        </button>
+                        <h1 id="store-detail-name" class="text-xl font-bold text-gray-900">Store Details</h1>
+                    </div>
+                    
+                    <!-- Store Banner and Info -->
+                    <div class="relative">
+                        <img id="store-detail-banner" src="https://placehold.co/600x300/E2E8F0/4A5568?text=Store+Banner" alt="Store Banner" class="w-full h-40 object-cover">
+                        <div class="p-4 bg-white shadow-sm">
+                             <div class="flex justify-between items-start">
+                                <div>
+                                    <h2 id="store-detail-title" class="text-2xl font-bold text-gray-900">Store Name</h2>
+                                    <p id="store-detail-category" class="text-md text-gray-500">Category</p>
+                                </div>
+                                <div class="flex items-center space-x-1 bg-brand-secondary text-white px-2.5 py-1 rounded-md text-md font-semibold">
+                                    <span id="store-detail-rating">4.5</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                                </div>
+                            </div>
+                            <p id="store-detail-distance" class="text-sm text-gray-600 mt-2">2.1 km away</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Product List -->
+                    <h3 class="p-4 text-lg font-semibold text-gray-800 border-t border-b bg-gray-50">Products</h3>
+                    <div id="product-list-container" class="flex flex-col">
+                        <!-- Products injected by JS -->
+                    </div>
+                </div>
+
+                <!-- === CART VIEW === -->
+                <div id="cart-view" class="view">
+                    <!-- Header with Back Button -->
+                    <div class="p-4 flex items-center space-x-2 border-b bg-white sticky top-0 z-10">
+                        <button id="cart-back-button" class="p-1 text-gray-600">
+                            <!-- Back Icon -->
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                        </button>
+                        <h1 class="text-xl font-bold text-gray-900">Your Cart</h1>
+                    </div>
+                    
+                    <div class="flex-grow flex flex-col">
+                        <!-- Cart Items -->
+                        <div id="cart-items-container" class="p-4 flex-col space-y-4 flex-grow">
+                            <!-- Cart items will be injected here -->
+                        </div>
+                        
+                        <!-- Empty Cart Message -->
+                        <div id="empty-cart-message" class="p-10 text-center text-gray-500 hidden flex-grow justify-center items-center flex-col">
+                            <svg class="w-16 h-16 mx-auto text-gray-400" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                            <p class="mt-4 text-lg font-semibold">Your cart is empty</p>
+                            <p class="text-sm">Add items from a store to get started.</p>
+                        </div>
+                        
+                        <!-- Order Summary (Shown if cart not empty) -->
+                        <div id="order-summary" class="p-4 bg-white border-t mt-auto hidden">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-lg font-medium text-gray-600">Subtotal</span>
+                                <span id="cart-subtotal" class="text-lg font-bold text-gray-900">₹0</span>
+                            </div>
+                            <div class="flex justify-between items-center mb-4">
+                                <span class="text-sm text-gray-500">Delivery & Taxes</span>
+                                <span id="cart-taxes" class="text-sm text-gray-900">₹50</span>
+                            </div>
+                            <div class="flex justify-between items-center mb-4 border-t pt-4">
+                                <span class="text-xl font-bold text-gray-900">To Pay</span>
+                                <span id="cart-total" class="text-xl font-bold text-gray-900">₹50</span>
+                            </div>
+                            <button id="place-order-btn" class="w-full bg-brand-primary text-white font-bold py-3 rounded-lg shadow-lg hover:bg-brand-dark transition-colors">
+                                Place Order
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- === PROFILE VIEW === -->
+                <div id="profile-view" class="view p-4">
+                    <!-- Header with Back Button -->
+                    <div class="p-4 flex items-center space-x-2 border-b bg-white sticky top-0 -m-4 mb-4 z-10">
+                        <button id="back-to-home-from-profile" class="p-1 text-gray-600">
+                            <!-- Back Icon -->
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                        </button>
+                        <h1 class="text-xl font-bold text-gray-900">Your Profile</h1>
+                    </div>
+                    
+                    <div class="flex flex-col items-center mt-8">
+                        <div class="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mb-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        </div>
+                        <h2 class="text-2xl font-bold text-gray-900">Hello, User</h2>
+                        <p class="text-gray-500">user@example.com</p>
+                        
+                        <div class="w-full mt-10 space-y-4">
+                             <button class="w-full text-left p-4 bg-white rounded-lg shadow-sm border">Manage Account</button>
+                             <button class="w-full text-left p-4 bg-white rounded-lg shadow-sm border">Payment Methods</button>
+                             <button class="w-full text-left p-4 bg-white rounded-lg shadow-sm border">Help & Support</button>
+                             <button class="w-full text-left p-4 bg-white rounded-lg shadow-sm border text-red-600 font-semibold">Log Out</button>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+
+            <!-- App Navigation (Sticky) -->
+            <nav class="app-nav p-3 flex justify-around items-center shadow-inner">
+                <button id="nav-home" class="flex flex-col items-center text-brand-primary w-1/3">
+                    <!-- Home Icon (Active) -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                    <span class="text-xs font-medium">Home</span>
+                </button>
+                <button id="nav-cart" class="relative flex flex-col items-center text-gray-500 w-1/3">
+                    <!-- Cart Icon (Inactive) -->
+                    <svg id="cart-icon-svg" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                    <span class="text-xs font-medium">Cart</span>
+                    <!-- Cart Badge -->
+                    <span id="cart-badge" class="absolute -top-1 right-[25%] bg-brand-primary text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center hidden">
+                        0
+                    </span>
+                </button>
+                <button id="nav-profile" class="flex flex-col items-center text-gray-500 w-1/3">
+                    <!-- Profile Icon (Inactive) -->
+                    <svg id="profile-icon-svg" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    <span class="text-xs font-medium">Profile</span>
+                </button>
+            </nav>
+
+        </div>
+    </div>
+
+    <!-- Toast Notification Element -->
+    <div id="toast-notification" class="toast">
+        Item added to cart!
+    </div>
+
+
+    <script>
+        // --- MOCK DATA ---
+        // This is your "fake backend"
+        const categories = [
+            { id: 'food', name: 'Food', img: 'https://placehold.co/150x150/FFF0DB/F97316?text=Food' },
+            { id: 'grocery', name: 'Grocery', img: 'https://placehold.co/150x150/E0F2FE/0EA5E9?text=Grocery' },
+            { id: 'pharmacy', name: 'Pharmacy', img: 'https://placehold.co/150x150/E0FBEA/10B981?text=Pharmacy' },
+            { id: 'manpower', name: 'Man Power', img: 'https://placehold.co/150x150/EEF2FF/6366F1?text=Man+Power' },
+            { id: 'gold', name: 'Gold', img: 'https://placehold.co/150x150/FEF9C3/EAB308?text=Gold' },
+            { id: 'advertising', name: 'Advertising', img: 'https://placehold.co/150x150/FCE7F3/EC4899?text=Ads' },
+        ];
+        
+        const offerBanners = [
+            { id: 'b1', img: 'https://placehold.co/320x150/4338CA/FFFFFF?text=50%25+OFF+Food+Orders', title: '50% OFF Food Orders' },
+            { id: 'b2', img: 'https://placehold.co/320x150/10B981/FFFFFF?text=Free+Delivery+on+Grocery', title: 'Free Delivery on Grocery' },
+            { id: 'b3', img: 'https://placehold.co/320x150/F97316/FFFFFF?text=Upto+₹100+Cashback', title: 'Upto ₹100 Cashback' },
+        ];
+        
+        const previousOrders = [
+            { orderId: 'o1', storeName: 'Royal Cafe', items: '2 items', total: 670, date: 'Oct 22, 2025', img: 'https://placehold.co/100x100/FFF0DB/F97316?text=Chaat' },
+            { orderId: 'o2', storeName: 'Daily Needs Mart', items: '5 items', total: 610, date: 'Oct 21, 2025', img: 'https://placehold.co/100x100/E0F2FE/0EA5E9?text=Milk' },
+            { orderId: 'o3', storeName: 'Apollo Pharmacy', items: '1 item', total: 50, date: 'Oct 20, 2025', img: 'https://placehold.co/100x100/E0FBEA/10B981?text=Crocin' },
+        ];
+
+        const stores = {
+            food: [
+                { id: 'f1', name: 'Royal Cafe', category: 'Food', rating: 4.5, distance: 2.1, banner: 'https://placehold.co/600x300/F97316/FFFFFF?text=Royal+Cafe', products: [
+                    { id: 'p1', name: 'Basket Chaat', price: 250, desc: 'The original king of chaats.', img: 'https://placehold.co/100x100/FFF0DB/F97316?text=Chaat' },
+                    { id: 'p2', name: 'Paneer Tikka', price: 320, desc: 'Smoky and spicy paneer cubes.', img: 'https://placehold.co/100x100/FFF0DB/F97316?text=Paneer' },
+                    { id: 'p3', name: 'Butter Chicken', price: 450, desc: 'Creamy and rich tomato gravy.', img: 'https://placehold.co/100x100/FFF0DB/F97316?text=Chicken' },
+                ]},
+                { id: 'f2', name: 'Tunday Kababi', category: 'Food', rating: 4.8, distance: 1.5, banner: 'https://placehold.co/600x300/F97316/FFFFFF?text=Tunday+Kababi', products: [
+                    { id: 'p4', name: 'Galawati Kebab', price: 150, desc: 'Melts in your mouth.', img: 'https://placehold.co/100x100/FFF0DB/F97316?text=Kebab' },
+                    { id: 'p5', name: 'Mutton Biryani', price: 220, desc: 'Aromatic and flavourful.', img: 'https://placehold.co/100x100/FFF0DB/F97316?text=Biryani' },
+                ]},
+            ],
+            grocery: [
+                { id: 'g1', name: 'Daily Needs Mart', category: 'Grocery', rating: 4.2, distance: 0.8, banner: 'https://placehold.co/600x300/0EA5E9/FFFFFF?text=Daily+Needs', products: [
+                    { id: 'p6', name: 'Whole Wheat Atta', price: 400, desc: '10kg Bag.', img: 'https://placehold.co/100x100/E0F2FE/0EA5E9?text=Atta' },
+                    { id: 'p7', name: 'Fresh Milk', price: 30, desc: '1L Pouch.', img: 'https://placehold.co/100x100/E0F2FE/0EA5E9?text=Milk' },
+                    { id: 'p8', name: 'Apples (Kashmiri)', price: 180, desc: '1kg.', img: 'https://placehold.co/100x100/E0F2FE/0EA5E9?text=Apples' },
+                ]},
+                { id: 'g2', name: 'Fresh Greens', category: 'Grocery', rating: 4.7, distance: 1.2, banner: 'https://placehold.co/600x300/0EA5E9/FFFFFF?text=Fresh+Greens', products: [
+                    { id: 'p9', name: 'Organic Spinach', price: 50, desc: '500g bunch.', img: 'https://placehold.co/100x100/E0F2FE/0EA5E9?text=Spinach' },
+                    { id: 'p10', name: 'Tomatoes', price: 40, desc: '1kg.', img: 'https://placehold.co/100x100/E0F2FE/0EA5E9?text=Tomatoes' },
+                ]},
+            ],
+            pharmacy: [
+                { id: 'ph1', name: 'Apollo Pharmacy', category: 'Pharmacy', rating: 4.6, distance: 0.5, banner: 'https://placehold.co/600x300/10B981/FFFFFF?text=Apollo', products: [
+                    { id: 'p11', name: 'Crocin Pain Relief', price: 50, desc: '10 Tablets.', img: 'https://placehold.co/100x100/E0FBEA/10B981?text=Crocin' },
+                    { id: 'p12', name: 'Dettol Antiseptic', price: 120, desc: '250ml Bottle.', img: 'https://placehold.co/100x100/E0FBEA/10B981?text=Dettol' },
+                ]},
+            ],
+            manpower: [
+                { id: 'm1', name: 'Quick Helpers', category: 'Man Power', rating: 4.1, distance: 3.0, banner: 'https://placehold.co/600x300/6366F1/FFFFFF?text=Quick+Helpers', products: [
+                    { id: 'p13', name: 'Plumber (per hour)', price: 400, desc: 'Certified plumber for leaks and fitting.', img: 'https://placehold.co/100x100/EEF2FF/6366F1?text=Plumber' },
+                    { id: 'p14', name: 'Electrician (per hour)', price: 450, desc: 'Wiring, fan installation, and repairs.', img: 'https://placehold.co/100x100/EEF2FF/6366F1?text=Electrician' },
+                ]},
+            ],
+            gold: [
+                { id: 'go1', name: 'Tanishq Hazratganj', category: 'Gold', rating: 4.9, distance: 2.5, banner: 'https://placehold.co/600x300/EAB308/FFFFFF?text=Tanishq', products: [
+                    { id: 'p15', name: '24k Gold Coin (1g)', price: 7100, desc: '99.9% Purity.', img: 'https://placehold.co/100x100/FEF9C3/EAB308?text=Coin' },
+                    { id: 'p16', name: 'Simple Gold Chain', price: 45000, desc: '22k gold, 8g weight.', img: 'https://placehold.co/100x100/FEF9C3/EAB308?text=Chain' },
+                ]},
+            ],
+            advertising: [
+                { id: 'a1', name: 'City Ads Agency', category: 'Advertising', rating: 4.3, distance: 4.1, banner: 'https://placehold.co/600x300/EC4899/FFFFFF?text=City+Ads', products: [
+                    { id: 'p17', name: 'Flyer Distribution', price: 2000, desc: '1000 Flyers in high-footfall area.', img: 'https://placehold.co/100x100/FCE7F3/EC4899?text=Flyers' },
+                    { id: 'p18', name: 'Social Media Post', price: 5000, desc: 'One sponsored post on city page.', img: 'https://placehold.co/100x100/FCE7F3/EC4899?text=Social' },
+                ]},
+            ]
+        };
+
+        // --- APP STATE ---
+        let cart = {}; // { p1: { name: '...', price: 120, quantity: 2, ... }, p2: { ... } }
+        let currentView = 'home-view';
+        let currentStoreId = null;
+        let currentCategoryId = null;
+
+        // --- DOM SELECTORS ---
+        const views = document.querySelectorAll('.view');
+        const homeView = document.getElementById('home-view');
+        const storeListView = document.getElementById('store-list-view');
+        const storeDetailView = document.getElementById('store-detail-view');
+        const cartView = document.getElementById('cart-view');
+        const profileView = document.getElementById('profile-view');
+        
+        const greetingText = document.getElementById('greeting-text');
+        const offerBannerContainer = document.getElementById('offer-banner-container');
+        const categoryGrid = document.getElementById('category-grid');
+        const previousOrdersContainer = document.getElementById('previous-orders-container');
+        
+        const storeListContainer = document.getElementById('store-list-container');
+        const storeListTitle = document.getElementById('store-list-title');
+        const productListContainer = document.getElementById('product-list-container');
+
+        const navHome = document.getElementById('nav-home');
+        const navCart = document.getElementById('nav-cart');
+        const navProfile = document.getElementById('nav-profile');
+        const cartBadge = document.getElementById('cart-badge');
+        
+        const backToHome = document.getElementById('back-to-home');
+        const backToStores = document.getElementById('back-to-stores');
+        const cartBackButton = document.getElementById('cart-back-button');
+        const backToHomeFromProfile = document.getElementById('back-to-home-from-profile');
+        const headerProfileIcon = document.getElementById('header-profile-icon');
+        
+        const cartItemsContainer = document.getElementById('cart-items-container');
+        const emptyCartMessage = document.getElementById('empty-cart-message');
+        const orderSummary = document.getElementById('order-summary');
+        const cartSubtotal = document.getElementById('cart-subtotal');
+        const cartTaxes = document.getElementById('cart-taxes');
+        const cartTotal = document.getElementById('cart-total');
+        const placeOrderBtn = document.getElementById('place-order-btn');
+
+        // --- NAVIGATION ---
+        
+        /**
+         * Hides all views and shows the one with the specified ID.
+         * @param {string} viewId - The ID of the view to show.
+         */
+        function showView(viewId) {
+            views.forEach(view => {
+                view.classList.remove('active');
+            });
+            document.getElementById(viewId).classList.add('active');
+            currentView = viewId;
+            // Scroll to top of the content area
+            document.querySelector('.app-content').scrollTop = 0;
+            updateNavUI();
+        }
+
+        /**
+         * Updates the bottom navigation bar to highlight the active tab.
+         */
+        function updateNavUI() {
+            // Reset all nav icons
+            [navHome, navCart, navProfile].forEach(nav => {
+                nav.classList.remove('text-brand-primary');
+                nav.classList.add('text-gray-500');
+                nav.querySelector('svg').setAttribute('fill', 'none');
+            });
+            
+            // Set active nav icon
+            let activeNav;
+            if (currentView === 'home-view' || currentView === 'store-list-view' || currentView === 'store-detail-view') {
+                activeNav = navHome;
+            } else if (currentView === 'cart-view') {
+                activeNav = navCart;
+            } else if (currentView === 'profile-view') {
+                activeNav = navProfile;
+            }
+
+            if (activeNav) {
+                activeNav.classList.add('text-brand-primary');
+                activeNav.classList.remove('text-gray-500');
+                // Special case for Home icon fill
+                activeNav.querySelector('svg').setAttribute('fill', 'currentColor');
+            }
+        }
+
+        // --- RENDERING FUNCTIONS ---
+
+        /**
+         * Renders all dynamic content on the home view.
+         */
+        function renderHomeView() {
+            setGreeting();
+            renderOfferBanners();
+            renderCategories();
+            renderPreviousOrders();
+            showView('home-view');
+        }
+
+        /**
+         * Sets the greeting text based on the time of day.
+         */
+        function setGreeting() {
+            const hour = new Date().getHours();
+            if (hour < 12) {
+                greetingText.textContent = 'Good Morning, User!';
+            } else if (hour < 18) {
+                greetingText.textContent = 'Good Afternoon, User!';
+            } else {
+                greetingText.textContent = 'Good Evening, User!';
+            }
+        }
+        
+        /**
+         * Renders the offer banners in the horizontal scroll.
+         */
+        function renderOfferBanners() {
+            offerBannerContainer.innerHTML = '';
+            offerBanners.forEach(banner => {
+                offerBannerContainer.innerHTML += `
+                    <div class="flex-shrink-0 w-3/4 sm:w-2/3">
+                        <img src="${banner.img}" alt="${banner.title}" class="w-full h-36 rounded-xl object-cover shadow-lg cursor-pointer transition-transform hover:scale-105">
+                    </div>
+                `;
+            });
+        }
+
+        /**
+         * Renders the category grid on the home page.
+         */
+        function renderCategories() {
+            categoryGrid.innerHTML = '';
+            categories.forEach(category => {
+                categoryGrid.innerHTML += `
+                    <div class="flex flex-col items-center text-center cursor-pointer group" data-category-id="${category.id}">
+                        <img src="${category.img}" alt="${category.name}" class="w-full rounded-lg shadow-sm transition-transform group-hover:scale-105">
+                        <span class="mt-2 text-sm font-semibold text-gray-700">${category.name}</span>
+                    </div>
+                `;
+            });
+            
+            // Add click listeners
+            categoryGrid.querySelectorAll('.cursor-pointer').forEach(card => {
+                card.addEventListener('click', () => {
+                    const categoryId = card.dataset.categoryId;
+                    currentCategoryId = categoryId;
+                    renderStoreList(categoryId);
+                    showView('store-list-view');
+                });
+            });
+        }
+        
+        /**
+         * Renders the previous orders in the horizontal scroll.
+         */
+        function renderPreviousOrders() {
+            previousOrdersContainer.innerHTML = '';
+            previousOrders.forEach(order => {
+                previousOrdersContainer.innerHTML += `
+                    <div class="flex-shrink-0 w-3/4 sm:w-2/3 bg-white border border-gray-200 rounded-lg shadow-sm p-3 space-y-2">
+                        <div class="flex items-center space-x-3">
+                            <img src="${order.img}" alt="${order.storeName}" class="w-12 h-12 rounded-lg object-cover">
+                            <div>
+                                <h3 class="font-bold text-gray-800">${order.storeName}</h3>
+                                <p class="text-sm text-gray-500">${order.items} • ₹${order.total}</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-400">Delivered on ${order.date}</p>
+                        <button class="w-full px-3 py-2 bg-brand-primary/10 text-brand-primary font-semibold rounded-md text-sm hover:bg-brand-primary/20" data-order-id="${order.orderId}">
+                            Reorder
+                        </button>
+                    </div>
+                `;
+            });
+            
+            // Add click listeners for reorder
+            previousOrdersContainer.querySelectorAll('[data-order-id]').forEach(button => {
+                button.addEventListener('click', () => {
+                    showToast("Reordering items...");
+                });
+            });
+        }
+
+        /**
+         * Renders the list of stores for a given category.
+         * @param {string} categoryId - The ID of the selected category.
+         */
+        function renderStoreList(categoryId) {
+            const category = categories.find(c => c.id === categoryId);
+            const categoryStores = stores[categoryId] || [];
+            storeListTitle.textContent = category.name;
+            storeListContainer.innerHTML = '';
+
+            if (categoryStores.length === 0) {
+                storeListContainer.innerHTML = '<p class="text-gray-500 text-center">No stores found in this category.</p>';
+                return;
+            }
+
+            categoryStores.forEach(store => {
+                storeListContainer.innerHTML += `
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden transition-transform hover:scale-[1.02] cursor-pointer" data-store-id="${store.id}">
+                        <img src="${store.banner}" alt="${store.name} Banner" class="w-full h-32 object-cover">
+                        <div class="p-4">
+                            <div class="flex justify-between items-center mb-1">
+                                <h3 class="text-lg font-bold text-gray-800">${store.name}</h3>
+                                <div class="flex items-center space-x-1 bg-brand-secondary text-white px-2 py-0.5 rounded-md text-sm font-semibold">
+                                    <span>${store.rating}</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-500 mb-2">${store.category}</p>
+                            <div class="flex items-center space-x-2 text-sm text-gray-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                <span>${store.distance} km</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Add click listeners
+            storeListContainer.querySelectorAll('.cursor-pointer').forEach(card => {
+                card.addEventListener('click', () => {
+                    const storeId = card.dataset.storeId;
+                    currentStoreId = storeId;
+                    renderStoreDetail(storeId, categoryId);
+                    showView('store-detail-view');
+                });
+            });
+        }
+
+        /**
+         * Renders the detail page for a specific store, including its products.
+         * @param {string} storeId - The ID of the selected store.
+         * @param {string} categoryId - The ID of the current category.
+         */
+        function renderStoreDetail(storeId, categoryId) {
+            const store = stores[categoryId].find(s => s.id === storeId);
+            if (!store) return;
+
+            // Update store info
+            document.getElementById('store-detail-name').textContent = store.name;
+            document.getElementById('store-detail-banner').src = store.banner;
+            document.getElementById('store-detail-title').textContent = store.name;
+            document.getElementById('store-detail-category').textContent = store.category;
+            document.getElementById('store-detail-rating').textContent = store.rating;
+            document.getElementById('store-detail-distance').textContent = `${store.distance} km away`;
+
+            // Render products
+            productListContainer.innerHTML = '';
+            store.products.forEach(product => {
+                const cartItem = cart[product.id];
+                const quantity = cartItem ? cartItem.quantity : 0;
+                
+                const buttonHtml = quantity > 0 
+                    ? `
+                        <div class="flex items-center justify-between bg-white text-brand-primary border border-brand-primary rounded-md shadow-md font-bold text-sm w-24 h-9">
+                            <button class="px-2 text-lg" data-action="decrement" data-product-id="${product.id}">-</button>
+                            <span class="px-2">${quantity}</span>
+                            <button class="px-2 text-lg" data-action="increment" data-product-id="${product.id}">+</button>
+                        </div>
+                    ` 
+                    : `
+                        <button class="bg-white text-brand-primary border border-brand-primary rounded-md px-6 py-2 text-sm font-bold shadow-md hover:bg-brand-primary/10 w-24 h-9" data-action="add" data-product-id="${product.id}">
+                            ADD
+                        </button>
+                    `;
+
+                productListContainer.innerHTML += `
+                    <div class="flex items-center justify-between p-4 border-b">
+                        <div class="flex-1 mr-4">
+                            <h4 class="font-semibold text-gray-800">${product.name}</h4>
+                            <p class="text-sm text-gray-500">${product.desc}</p>
+                            <p class="font-bold text-gray-900 mt-1">₹${product.price}</p>
+                        </div>
+                        <div class="relative flex flex-col items-center space-y-2">
+                            <img src="${product.img}" alt="${product.name}" class="w-24 h-24 rounded-md object-cover">
+                            <div class="add-to-cart-btn-container" data-product-id="${product.id}">
+                                ${buttonHtml}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            // Add click listeners for product buttons
+            productListContainer.querySelectorAll('[data-action]').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const action = e.currentTarget.dataset.action;
+                    const productId = e.currentTarget.dataset.productId;
+                    
+                    if (action === 'add' || action === 'increment') {
+                        addToCart(productId, storeId, categoryId);
+                    } else if (action === 'decrement') {
+                        decrementFromCart(productId);
+                    }
+                    // Re-render this product item to show updated button
+                    renderStoreDetail(currentStoreId, currentCategoryId);
+                    // Also re-render cart if it's the current view
+                    if(currentView === 'cart-view') renderCart();
+                });
+            });
+        }
+        
+        /**
+         * Renders the cart view, showing items and totals.
+         */
+        function renderCart() {
+            if (Object.keys(cart).length === 0) {
+                cartItemsContainer.innerHTML = '';
+                emptyCartMessage.classList.remove('hidden');
+                orderSummary.classList.add('hidden');
+            } else {
+                emptyCartMessage.classList.add('hidden');
+                orderSummary.classList.remove('hidden');
+                cartItemsContainer.innerHTML = '';
+                let subtotal = 0;
+                
+                for (const productId in cart) {
+                    const item = cart[productId];
+                    subtotal += item.price * item.quantity;
+                    cartItemsContainer.innerHTML += `
+                        <div class="flex items-center p-3 bg-white rounded-lg shadow-sm">
+                            <img src="${item.img}" alt="${item.name}" class="w-16 h-16 rounded-md object-cover mr-4">
+                            <div class="flex-1">
+                                <h4 class="font-semibold text-gray-800">${item.name}</h4>
+                                <p class="text-sm text-gray-500">₹${item.price}</p>
+                            </div>
+                            <div class="flex items-center justify-between bg-white text-brand-primary border border-brand-primary rounded-md shadow-md font-bold text-sm w-24 h-9">
+                                <button class="px-2 text-lg" data-action="decrement" data-product-id="${productId}">-</button>
+                                <span class="px-2">${item.quantity}</span>
+                                <button class="px-2 text-lg" data-action="increment" data-product-id="${productId}">+</button>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // Add listeners for cart quantity buttons
+                cartItemsContainer.querySelectorAll('[data-action]').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                         const action = e.currentTarget.dataset.action;
+                         const productId = e.currentTarget.dataset.productId;
+                         if (action === 'increment') {
+                            const product = findProductById(productId);
+                            if(product) addToCart(productId, product.storeId, product.categoryId);
+                         } else if (action === 'decrement') {
+                            decrementFromCart(productId);
+                         }
+                         renderCart(); // Re-render cart view
+                    });
+                });
+                
+                // Update totals
+                const taxes = 50.0;
+                const total = subtotal + taxes;
+                cartSubtotal.textContent = `₹${subtotal.toFixed(2)}`;
+                cartTaxes.textContent = `₹${taxes.toFixed(2)}`;
+                cartTotal.textContent = `₹${total.toFixed(2)}`;
+            }
+        }
+
+        // --- CART LOGIC ---
+        
+        function findProductById(productId) {
+            for (const categoryId in stores) {
+                for (const store of stores[categoryId]) {
+                    const product = store.products.find(p => p.id === productId);
+                    if (product) {
+                        return { ...product, storeId: store.id, categoryId: categoryId };
+                    }
+                }
+            }
+            return null;
+        }
+        
+        function addToCart(productId, storeId, categoryId) {
+            // Real app: check if store is different and ask user to clear cart
+            
+            const product = findProductById(productId);
+            if (!product) return;
+            
+            if (cart[productId]) {
+                cart[productId].quantity++;
+            } else {
+                cart[productId] = {
+                    ...product,
+                    quantity: 1
+                };
+            }
+            showToast(`${product.name} added to cart!`);
+            updateCartBadge();
+        }
+
+        function decrementFromCart(productId) {
+            if (cart[productId]) {
+                cart[productId].quantity--;
+                if (cart[productId].quantity <= 0) {
+                    delete cart[productId];
+                }
+                updateCartBadge();
+            }
+        }
+        
+        function updateCartBadge() {
+            let totalItems = 0;
+            for (const productId in cart) {
+                totalItems += cart[productId].quantity;
+            }
+            
+            if (totalItems > 0) {
+                cartBadge.textContent = totalItems;
+                cartBadge.classList.remove('hidden');
+            } else {
+                cartBadge.classList.add('hidden');
+            }
+        }
+        
+        function placeOrder() {
+            if (Object.keys(cart).length === 0) return;
+            
+            cart = {}; // Clear the cart
+            updateCartBadge();
+            renderCart(); // Re-render empty cart
+            renderHomeView(); // Go back home
+            showToast("Order placed successfully!", "success");
+        }
+
+        // --- UTILITIES ---
+        
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast-notification');
+            toast.textContent = message;
+            toast.className = 'toast show'; // Reset classes and show
+            
+            if(type === 'success') {
+                toast.classList.add('success');
+            }
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2500);
+        }
+
+        // --- EVENT LISTENERS ---
+        
+        // Navigation Bar
+        navHome.addEventListener('click', () => {
+            renderHomeView();
+        });
+        
+        navCart.addEventListener('click', () => {
+            renderCart();
+            showView('cart-view');
+        });
+        
+        navProfile.addEventListener('click', () => {
+            showView('profile-view');
+        });
+        
+        headerProfileIcon.addEventListener('click', () => {
+             showView('profile-view');
+        });
+
+        // Back Buttons
+        backToHome.addEventListener('click', () => renderHomeView());
+        backToHomeFromProfile.addEventListener('click', () => renderHomeView());
+        backToStores.addEventListener('click', () => showView('store-list-view'));
+        
+        cartBackButton.addEventListener('click', () => {
+            // Smart back
+            if (currentStoreId && currentCategoryId) {
+                // If user was viewing a store, go back there
+                renderStoreDetail(currentStoreId, currentCategoryId);
+                showView('store-detail-view');
+            } else {
+                // Otherwise, go home
+                renderHomeView();
+            }
+        });
+        
+        // Place Order
+        placeOrderBtn.addEventListener('click', placeOrder);
+
+        // --- INITIALIZATION ---
+        
+        // Run when the DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            renderHomeView();
+        });
+
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat Assistant</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="phone-frame">
+    <header>
+      <button class="back-btn" onclick="goBack()">←</button>
+      <h1>LocalMart Chat</h1>
+    </header>
+
+    <section class="chat-box" id="chatBox">
+      <div class="bot-msg">👋 Hi! I’m your LocalMart Assistant. How can I help you today?</div>
+    </section>
+
+    <div class="chat-input">
+      <input type="text" id="userInput" placeholder="Type a message…" onkeydown="if(event.key==='Enter')sendMessage()">
+      <button onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+  <script src="main.js"></script>
+</body>
+</html>
